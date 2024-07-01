@@ -13,10 +13,16 @@ chmod +x ${APP_DIR}/2M-pos ${APP_DIR}/hf-pos ${APP_DIR}/pos-generator ${APP_DIR}
 cp -r ${APP_DIR}/* $HOME/bin/posit-generator/
 rm $HOME/bin/posit-generator/install.sh
 
-ck=$(which wwl)
+ck=$(which locator)
 if [ -z ${ck} ]; then
-    sudo apt update
-    sudo apt install wwl
+    echo "locator required but not found. installing"
+    curl http://db.net/downloads/wwl+db-1.3.tgz
+    tar -zxvf wwl+db-1.3.tgz
+    rm wwl+db-1.3.tgz
+    cd wwl+db-1.3
+    make
+    sudo make install
+    rm -rf wwl+db-1.3
 fi
 
 cat <<EOF >/run/user/$UID/pos-generator.desktop
