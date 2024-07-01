@@ -25,5 +25,5 @@ Before creating POTA POS files, use this script to download the POTA list.
 # Install
 
 ```
-git clone https://github.com/km4ack/posit-generator.git && cd posit-generator && bash install
+git clone https://github.com/km4ack/posit-generator.git && cd posit-generator && bash install.sh
 ```
