@@ -136,12 +136,14 @@ LONG(){
 #function downloads state list
 DOWNLOAD(){
     HEADER
+    echo "Hint: Use full state name"
     read -p "Which state to download? " state
     list_name=${state,,}
     state=${list_name^}
     list_name=$(echo $list_name | sed 's/ /-/')
     state=$(echo $state | sed 's/ /%20/')
     curl "https://www.repeaterbook.com/api/export.php?state=${state}" > ${MYDIR}/repeater_list/${list_name}.json
+    MAIN
 }
 
 CREATE_POS(){
