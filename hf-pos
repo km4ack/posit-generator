@@ -64,6 +64,24 @@ GET_INPUT(){
     fi
 }
 GET_INPUT
+
+#function will convert lat long for POS output file
+LATLONG(){
+    long=$(/usr/local/bin/locator ${grid} | grep Coord | awk '{print $4}' | sed 's/-//')
+    lat=$(/usr/local/bin/locator ${grid} | grep Coord | awk '{print $8}')
+    first_lat=$(echo ${lat} | awk -F "." '{print $1}')
+    last_lat=$(echo ${lat} | awk -F "." '{print $2}')
+    last_lat=$(echo ".${last_lat} * 60" | bc | cut -b1-5)
+    last_lat=$(printf "%05.2f" ${last_lat})
+    new_lat=${first_lat}${last_lat}
+
+    first_long=$(echo ${long} | awk -F "." '{print $1}')
+    last_long=$(echo ${long} | awk -F "." '{print $2}')
+    last_long=$(echo ".${last_long} * 60" | bc | cut -b1-5)
+    last_long=$(printf "%05.2f" ${last_long})
+    new_long=${first_long}${last_long}
+}
+
 meters=$(echo ${DOC} | awk -F "/" '{print $NF}' | sed 's/.txt//')
 output=$HOME/Desktop/winlink-${meters}.pos
 if [ -f $output ]; then
@@ -94,7 +112,7 @@ while read -r line; do
     distance=$(echo $line | awk '{print $3}')
 
     #skip lines 1-3
-    if [ $x -le 4 ]; then
+    if [ $x -le 3 ]; then
         continue
     fi
 
@@ -103,24 +121,14 @@ while read -r line; do
         continue
     fi
 
-    #skip if distance is greater than 3500km
-    if [ $distance -gt ${max_distance} ]; then
+    #skip if distance is greater than max_distance
+    if [ ${distance} -gt ${max_distance} ]; then
         continue
     fi
     call=`printf "%-9s" $call`
-    LAT_LONG=$(locator $grid | grep Coord)
+    LATLONG
     TIME="*192039h"
-    LONG_CK=$(echo $LAT_LONG | awk '{print $4}' | sed 's/-//')
-    if (($(echo "${LONG_CK} 99.99999" | awk '{print ($1 > $2)}'))); then
-        LONG=$(echo $LAT_LONG | awk '{print $4}' | sed 's/-//' | sed 's/\.//')
-    else
-        LONG=$(echo $LAT_LONG | awk '{print $4}' | sed 's/-/0/' | sed 's/\.//')
-    fi
-
-    LONG=${LONG}.00W
-    LAT=$(echo $LAT_LONG | awk '{print $8}' | sed 's/\.//' | cut -b1-4)
-    LAT=${LAT}.00N
-    echo ";${call}${TIME}${LAT}${table}${LONG}${symbol}${distance}km :: Center-${freq}" >> $output
+    echo ";${call}${TIME}${new_lat}N${table}${new_long}W${symbol}${distance}km :: Center-${freq}" >> $output
 done < $DOC
 clear;echo;echo
 count=$(wc -l $output | awk '{print $1}')
