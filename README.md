@@ -14,6 +14,14 @@ POTA Parks
 
 Once the pos file is created, it can be imported in YAAC where it will be placed on the map as an object.
 
+# Requirements
+
+You will need Pat Menu installed before creating Winlink POS files. 
+
+Before creating Repeater POS files, use this script to download the state repeater list.
+
+Before creating POTA POS files, use this script to download the POTA list.
+
 # Install
 
 ```
