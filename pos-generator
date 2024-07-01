@@ -1,0 +1,50 @@
+#!/bin/bash
+
+version=1
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+#27JUNE2024 KM4ACK
+
+HEADER(){
+    clear;echo;echo
+    echo "  ##########################"
+    echo "  #    POSIT Generator     #"
+    echo "  #     v${version} by KM4ACK       #"
+    echo "  ##########################"
+    echo
+}
+
+GET_INPUT(){
+HEADER
+echo "1) Generate 2M/440 Gateway POS"
+echo "2) Generate VARA HF Gateway POS"
+echo "3) Generate Repeater POS"
+echo "4) Generate POTA POS"
+echo "5) Exit"
+echo;read -p "Choose a Number " ans
+
+case $ans in
+    1)
+    ${APP_DIR}/2M-pos
+    ;;    
+    2)
+    ${APP_DIR}/hf-pos
+    ;;
+    3)
+    ${APP_DIR}/repeater-pos
+    ;;
+    4)
+    ${APP_DIR}/pota-pos
+    ;;
+    5)
+    exit 0
+    ;;
+    *)
+    echo "invalid input of $ans"
+    echo "please choose a valid number"
+    sleep 3
+    GET_INPUT
+    ;;
+esac 
+
+}
+GET_INPUT
