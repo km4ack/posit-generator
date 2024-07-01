@@ -1,0 +1,118 @@
+#!/bin/bash
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+input_file=${APP_DIR}/parks.json
+temp_file=/run/user/$UID/pota.temp
+table="\\"
+symbol=";"
+version=$(grep version ${APP_DIR}/pos-generator | head -1 | awk -F "=" '{print $2}')
+#29JUNE2024 KM4ACK
+#ref: https://www.calculatorsoup.com/calculators/conversions/convert-decimal-degrees-to-degrees-minutes-seconds.php
+
+if [ -f ${temp_file} ]; then
+    rm ${temp_file}
+fi
+
+HEADER(){
+    clear;echo;echo
+    echo "  ##########################"
+    echo "  #     POTA to POS        #"
+    echo "  #     v${version} by KM4ACK       #"
+    echo "  ##########################"
+    echo
+}
+
+
+menu(){
+    HEADER
+    echo "1) Download POTA Database (~2.5MB)"
+    echo "2) Create POTA POS"
+    echo "3) Exit"
+    echo;read -p "Choose a number " ans
+
+    case $ans in
+        1)
+        download
+        menu
+        ;;
+        2)
+        user_input
+        ;;
+        3)
+        exit
+        ;;
+        *)
+        echo "invalid option ${ans}. choose again"
+        sleep 3
+        menu
+    esac
+}
+
+
+user_input(){
+    echo "Which state to search?"
+    read -p "Two letter state abbreviation? " state
+    state=${state^^}
+    state=US-${state}
+    echo ${state}
+    out_file=$HOME/Desktop/POTA-${state}.pos
+    if [ -f ${out_file} ]; then
+        rm ${out_file}
+    fi
+    create_pos
+}
+
+
+download(){
+    curl https://api.pota.app/program/parks/US > ${input_file}
+    echo "File downloaded"
+    sleep 3
+    MAIN
+}
+
+
+latlong(){
+    long=${park_long}
+    lat=${park_lat}
+    first_lat=$(echo ${lat} | awk -F "." '{print $1}')
+    last_lat=$(echo ${lat} | awk -F "." '{print $2}')
+    last_lat=$(echo ".${last_lat} * 60" | bc | cut -b1-5)
+    last_lat=$(printf "%05.2f" ${last_lat})
+    new_lat=${first_lat}${last_lat}
+
+    first_long=$(echo ${long} | awk -F "." '{print $1}')
+    last_long=$(echo ${long} | awk -F "." '{print $2}')
+    last_long=$(echo ".${last_long} * 60" | bc | cut -b1-5)
+    last_long=$(printf "%05.2f" ${last_long})
+    new_long=${first_long}${last_long}
+}
+
+
+create_pos(){
+    jq -r '.[] | select(.locationDesc == "'$state'") | {reference: .reference, name: .name, latitude: .latitude, longitude: .longitude} | join ("|")' ${input_file} > ${temp_file}
+    count=$(wc -l ${temp_file} | awk '{print $1}')
+    clear;HEADER
+    echo "found total of ${count} parks. processing"
+    x=1
+    y=1
+    while read -r line; do
+        if [ ${x} = 25 ]; then
+            echo "${y} parks processed"
+            x=0
+        fi
+        park_num=$(echo ${line} | awk -F "|" '{print $1}')
+        park_num=`printf "%-9s" $park_num`
+        park_name=$(echo ${line} | awk -F "|" '{print $2}')
+        park_lat=$(echo ${line} | awk -F "|" '{print $3}')
+        park_long=$(echo ${line} | awk -F "|" '{print $4}' | sed 's/-//')
+        time=$(date -u +%H%M%S)
+        latlong
+        echo ";${park_num}*${time}h${new_lat}N${table}${new_long}W${symbol}${park_name}" >> ${out_file}
+        ((x++))
+        ((y++))
+    done < ${temp_file}
+    echo "File ${out_file} has been"
+    echo "created and is ready to import into YAAC."
+    echo;read -n 1 -s -r -p "Press any key to continue"
+}
+menu
