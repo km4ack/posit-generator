@@ -111,8 +111,8 @@ while read -r line; do
     fi
     distance=$(echo $line | awk '{print $3}')
 
-    #skip lines 1-3
-    if [ $x -le 3 ]; then
+    #ignore lines that are irrelevant
+    if [ -z "$(echo ${line} | grep VARA)" ]; then
         continue
     fi
 
