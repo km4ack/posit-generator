@@ -1,0 +1,166 @@
+#!/bin/bash
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+temp_file=/run/user/$UID/packet-temp-out.txt
+symbol="\`"
+table="/"
+version=$(grep version ${APP_DIR}/pos-generator | head -1 | awk -F "=" '{print $2}')
+#28JUNE2024 KM4ACK
+
+HEADER(){
+    clear;echo;echo
+    echo "  ##########################"
+    echo "  # Winlink Gateway to POS #"
+    echo "  #     v${version} by KM4ACK       #"
+    echo "  ##########################"
+    echo
+}
+
+MAIN(){
+    HEADER
+    echo "1) Search for Packet Gateways"
+    echo "2) Search for VARA Gateways"
+    echo "3) Exit"
+    read -p "Please choose a number? " type
+
+    case ${type} in
+        1)
+        input_file=/home/km4ack/patmenu2/ardop-list/packet.txt
+        out_file=$HOME/Desktop/packet-gateways.pos
+        ;;   
+        2)
+        input_file=/home/km4ack/patmenu2/vara-list/varafm.txt
+        out_file=$HOME/Desktop/vara_fm-gateways.pos
+        ;;
+        3)
+        kill $$
+        ;;
+        *)
+        echo "invalid choise ${type}"
+        sleep 3
+        MAIN
+        ;;
+    esac
+
+    read -p "Max distance to search in km? " max_distance
+    if [ -z ${max_distance} ]; then
+        echo "distance cannot be blank"
+        sleep 3
+        MAIN
+    fi
+    if [ -f /run/user/$UID/gridinfo.txt ]; then
+        grid=$(cat /run/user/$UID/gridinfo.txt | cut -b1-6)
+        echo "Current grid is ${grid}"
+        read -p "Use current grid? y/n " grid_ans
+        if [ ${grid_ans} = 'n' ] || [ ${grid_ans} = 'N' ]; then
+            read -p "What is your current grid? " grid 
+            if [ -z ${grid} ]; then
+                echo "grid cannot be blank"
+                sleep 3
+                MAIN
+            fi
+        fi
+    else
+        read -p "What is your current grid? " grid 
+        if [ -z ${grid} ]; then
+            echo "grid cannot be blank"
+            sleep 3
+            MAIN
+        fi
+
+    fi
+    clear;echo;echo "Search criteria:"
+    HEADER
+    echo "Grid = ${grid}"
+    echo "Distance = ${max_distance}km"
+    echo "Searching for packet gateways....standby"
+    grid=$(echo ${grid} | cut -b1-4)
+}
+MAIN
+
+#function will convert lat long for POS output file
+LATLONG(){
+    long=$(/usr/local/bin/locator ${grid} | grep Coord | awk '{print $4}' | sed 's/-//')
+    lat=$(/usr/local/bin/locator ${grid} | grep Coord | awk '{print $8}')
+    first_lat=$(echo ${lat} | awk -F "." '{print $1}')
+    last_lat=$(echo ${lat} | awk -F "." '{print $2}')
+    last_lat=$(echo ".${last_lat} * 60" | bc | cut -b1-5)
+    last_lat=$(printf "%05.2f" ${last_lat})
+    new_lat=${first_lat}${last_lat}
+
+    first_long=$(echo ${long} | awk -F "." '{print $1}')
+    last_long=$(echo ${long} | awk -F "." '{print $2}')
+    last_long=$(echo ".${last_long} * 60" | bc | cut -b1-5)
+    last_long=$(printf "%05.2f" ${last_long})
+    new_long=${first_long}${last_long}
+}
+#LATLONG; exit
+
+#verify we have a file to work with
+if [ ! -f ${input_file} ]; then
+    echo "master packet list not found"
+    echo "use pat menu to download the packet list"
+    echo "Hint: Pat Menu->Find Winlink Gateways->Download Gateway List"
+    exit 1
+fi
+
+#remove previous temp_file
+if [ -f ${temp_file} ]; then
+    rm ${temp_file}
+fi
+
+#remove previous out_file
+if [ -f ${out_file} ]; then
+    rm ${out_file}
+fi
+
+#calculate before and after grid
+#ex. EM65 gives EM64 & EM66
+grid_base=$(echo ${grid} | cut -b1-2)
+grid_num=$(echo ${grid} | cut -b3-4)
+before_grid=$((grid_num - 1))
+before_grid=${grid_base}${before_grid}
+after_grid=$((grid_num + 1))
+after_grid=${grid_base}${after_grid}
+
+#search for grids and write matches to temp file
+x=0
+stations=$(wc -l ${input_file} | awk '{print $1}')
+while read -r line; do
+    ck=$(echo ${line} | grep -i "${grid}\|${before_grid}\|${after_grid}")
+    clear;echo   
+    echo "processing ${x} of ${stations} station(s)"
+    if [ -n "${ck}" ]; then
+        #ck_distance=$(echo ${ck} | awk '{print $3}')
+        #if [ "${ck_distance}" -le ${max_distance} ]; then
+            echo ${ck} >> ${temp_file}
+        #fi
+    fi
+    ((x++))
+done < ${input_file}
+
+if [ ! -f ${temp_file} ]; then
+    echo "nothing found within ${max_distance}km of ${grid}"
+    exit
+fi
+
+#create POS file
+while read -r line; do
+    call=$(echo $line | awk '{print $1}')
+    call=`printf "%-9s" $call`
+    grid=$(echo $line | awk '{print $2}' | sed 's/\[//;s/]//')
+    speed=$(echo $line | awk '{print $6}')
+    freq=$(echo $line | awk '{print $7}')
+    time=$(date -u +%H%M%S)
+    LATLONG
+    echo ";${call}*${time}h${new_lat}N${table}${new_long}W${symbol}${freq} ${speed}" >> ${out_file}
+done < ${temp_file}
+
+HEADER
+echo "SUCCESS!! Found the following:"
+echo "============================================================"
+cat ${temp_file}
+echo "============================================================"
+echo "POS file is ${out_file} and is ready to be imported into YAAC"
+echo;read -n 1 -s -r -p "Press any key to continue"
+
