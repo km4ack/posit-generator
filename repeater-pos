@@ -1,0 +1,213 @@
+#!/bin/bash
+
+#script takes JSON files downloaded from repeaterbook.com and
+#converts them to POS file to be imported into YAAC
+#31DEC2022 KM4ACK
+
+#https://www.repeaterbook.com/api/export.php?state=Tennessee
+
+MYDIR="$(cd "$(dirname "$0")" && pwd)"
+OUT_DIR=$HOME/Desktop/
+TEMP=/run/user/$UID/temp_repeater_list.csv
+version=$(grep version ${MYDIR}/pos-generator | head -1 | awk -F "=" '{print $2}')
+source ${MYDIR}/repeater_list/.current_state.txt
+
+mkdir -p ${MYDIR}/repeater_list
+touch $TEMP
+
+#cleanup any existing files
+if [ -f $TEMP ]; then rm $TEMP; fi
+
+HEADER(){
+    source ${MYDIR}/repeater_list/.current_state.txt
+    if [ -z $IN ]; then 
+	    state=NONE
+    else
+	    state=$(echo $IN | awk -F "/" '{print $NF}' | sed 's/.json//')
+    fi
+
+    clear;echo;echo
+    echo "  ###############################"
+    echo "  #        Repeater POS         #"
+    echo "  #        v${version} by KM4ACK         #"
+    echo "  ###############################"
+    echo
+    echo "Current State Selected is $state"
+    echo
+}
+
+#Main Menu
+MAIN(){
+    if [ -z $IN ]; then SET_STATE; fi
+    HEADER
+    echo "1) Download New State Repeater List"
+    echo "2) Select New State"
+    echo "3) Create POS from State List(s)"
+    echo "4) Exit"
+    echo; read -p "Choose a Option " ans
+
+    case $ans in
+	    1)
+		    DOWNLOAD
+		    MAIN
+	    ;;
+	    2)
+		    SET_STATE
+		    MAIN
+	    ;;
+	    3)
+		    CREATE_POS
+		    MAIN
+	    ;;
+	    4)
+            exit
+	    ;;
+	    *)
+		    echo "Invalid Option! Please choose a number"
+		    sleep 3
+		    MAIN
+	    ;;
+    esac
+}
+
+
+SET_STATE(){
+	HEADER
+	#verify we have a list to work with
+	ck=$(ls ${MYDIR}/repeater_list)
+	if [ -z "$ck" ]; then DOWNLOAD; fi
+
+	#loop through dir to show current local list(s)
+	for file in ${MYDIR}/repeater_list/*; do
+		echo $file | awk -F "/" '{print $NF}' | sed 's/.json//'
+	done
+	read -p "Pick a state? " IN
+	IN=${IN,,}
+	IN=${MYDIR}/repeater_list/${IN}.json
+    if [ ! -f $IN ]; then
+        echo "file not found. check spelling and try again"
+        echo;read -n 1 -s -r -p "Press any key to continue"
+        SET_STATE
+    fi
+	echo "IN=$IN" > ${MYDIR}/repeater_list/.current_state.txt
+}
+
+#function converts lat
+LAT(){
+    LAT_DEGREE=$(echo $LAT | sed 's/\..*//' )
+    LAT_MIN=$(echo $LAT | sed 's/.*\././' | cut -b1-4)
+    LAT_MIN=$(echo "$LAT_MIN * 60" | bc)
+    LAT_SEC=$(echo $LAT_MIN | sed 's/.*\././')
+    LAT_SEC=$(echo "$LAT_SEC * 60" | bc | sed 's/\..*//')
+    LAT_MIN=$(echo $LAT_MIN | sed 's/\..*//')
+
+    if [ -z $LAT_DEGREE ]; then LAT_DEGREE=00; fi
+    if [ -z $LAT_MIN ]; then LAT_MIN=00; fi
+    if [ -z $LAT_SEC ]; then LAT_SEC=00; fi
+
+    if [ ${#LAT_DEGREE} -lt 2 ]; then LAT_DEGREE=0${LAT_DEGREE}; fi
+    if [ ${#LAT_MIN} -lt 2 ]; then LAT_MIN=0${LAT_MIN}; fi
+    if [ ${#LAT_SEC} -lt 2 ]; then LAT_SEC=0${LAT_SEC}; fi
+
+    NEW_LAT="${LAT_DEGREE}${LAT_MIN}.${LAT_SEC}N"
+}
+
+#function convers long
+LONG(){
+    LONG=$(echo $LONG | sed 's/-/0/')
+    LONG_DEGREE=$(echo $LONG | sed 's/\..*//')
+    LONG_MIN=$(echo $LONG | sed 's/.*\././' | cut -b1-4)
+    LONG_MIN=$(echo "$LONG_MIN * 60" | bc)
+    LONG_SEC=$(echo $LONG_MIN | sed 's/.*\././')
+    LONG_SEC=$(echo "$LONG_SEC * 60" | bc | sed 's/\..*//')
+    LONG_MIN=$(echo $LONG_MIN | sed 's/\..*//')
+
+    if [ -z $LONG_DEGREE ]; then LONG_DEGREE=00; fi
+    if [ -z $LONG_MIN ]; then LONG_MIN=00; fi
+    if [ -z $LONG_SEC ]; then LONG_SEC=00; fi
+
+    if [ ${#LONG_DEGREE} -lt 2 ]; then LONG_DEGREE=0${LONG_DEGREE}; fi
+    if [ ${#LONG_MIN} -lt 2 ]; then LONG_MIN=0${LONG_MIN}; fi
+    if [ ${#LONG_SEC} -lt 2 ]; then LONG_SEC=0${LONG_SEC}; fi
+
+    NEW_LONG="${LONG_DEGREE}${LONG_MIN}.${LONG_SEC}W"
+}
+
+#function downloads state list
+DOWNLOAD(){
+    HEADER
+    read -p "Which state to download? " state
+    list_name=${state,,}
+    state=${list_name^}
+    list_name=$(echo $list_name | sed 's/ /-/')
+    state=$(echo $state | sed 's/ /%20/')
+    curl "https://www.repeaterbook.com/api/export.php?state=${state}" > ${MYDIR}/repeater_list/${list_name}.json
+}
+
+CREATE_POS(){
+	HEADER	
+	read -p "County to Search or all? " county
+	county=${county,,}	#convert to lower case
+	county=${county^}	#cap first letter
+	echo "Searching $county county"
+    mkdir -p $OUT_DIR
+	FINAL=${OUT_DIR}${state}_${county}_repeater-list.POS
+	if [ -f $FINAL ]; then rm $FINAL; fi
+
+	if [ "$county" = 'All' ]; then
+		echo "Standby, this can take several minutes."
+		echo "If you see errors, double check the last entry"
+		echo "before trying to import to YAAC"
+		jq -r '.results[] | {Call: .Callsign, Frequency: .Frequency, PL: .PL, Lat: .Lat, Long: .Long} | join (",")' $IN > $TEMP
+	else
+		jq -r '.results[] | select(.County == "'$county'") | {Call: .Callsign, Frequency: .Frequency, PL: .PL, Lat: .Lat, Long: .Long} | join (",")' $IN > $TEMP
+	fi
+
+    x=1
+    y=1
+    z=1
+	while read -r line; do
+	    #get data
+	    TIME=$(date -u +%H%M%S)
+	    CALL=$(echo $line | awk -F "," '{print $1}')
+        if [ x = 14 ]; then x=1; fi
+        CALL="${CALL}-${x}"
+	    CALL=`printf "%-9s" $CALL`	#convert to 9 character string
+	    FREQ=$(echo $line | awk -F "," '{print $2}')
+	    TONE=$(echo $line | awk -F "," '{print $3}')
+	    LAT=$(echo $line | awk -F "," '{print $4}')
+	    LONG=$(echo $line | awk -F "," '{print $5}')
+	    LAT	#call funtion to convert lat
+	    LONG	#call function to convert long
+	    COMMENT="$FREQ $TONE"
+	    #output POS file
+	    echo ";${CALL}*${TIME}h${NEW_LAT}/${NEW_LONG}r${COMMENT}" >> $FINAL
+        ((x++))
+        ((y++))
+        ((z++))
+        if [ ${y} = 50 ]; then
+            y=1
+            echo "Files processed so far ${z}"
+        fi
+	done < $TEMP
+
+#see if any repeaters were found
+if [ ! -f $FINAL ]; then
+	echo "nothing found"
+	read -n 1 -s -r -p "Press any key to continue"
+else
+	echo "list created and placed on the desktop"
+	echo $FINAL
+	rm $TEMP
+	read -n 1 -s -r -p "Press any key to continue"
+fi
+exit
+
+}
+MAIN
+
+
+
+
+
+
