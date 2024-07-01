@@ -3,7 +3,7 @@
 #28JUNE2024 KM4ACK
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-mkdir -p $HOME/bin/pos
+mkdir -p $HOME/bin/posit-generator
 chmod +x ${APP_DIR}/2M-pos ${APP_DIR}/download-all-state-repeaters ${APP_DIR}/hf-pos ${APP_DIR}/pos-generator ${APP_DIR}/pota-pos ${APP_DIR}/repeater-pos
 cp -r ${APP_DIR}/* $HOME/bin/posit-generator/
 
