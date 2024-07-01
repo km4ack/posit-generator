@@ -1,0 +1,139 @@
+#!/bin/bash
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+max_distance=2500
+symbol="\`"
+table="/"
+version=$(grep version ${APP_DIR}/pos-generator | head -1 | awk -F "=" '{print $2}')
+#28JUNE2024 KM4ACK
+
+HEADER(){
+    clear;echo;echo
+    echo "  ##########################"
+    echo "  # Winlink Gateway to POS #"
+    echo "  #     v${version} by KM4ACK       #"
+    echo "  ##########################"
+    echo
+}
+
+GET_INPUT(){
+    HEADER
+    echo "1) 20 Meters VARA HF"
+    echo "2) 30 Meters VARA HF"
+    echo "3) 40 Meters VARA HF"
+    echo "4) 80 Meters VARA HF"
+    echo "5) Exit"
+    echo;read -p "Please choose a number " ANS
+
+    case $ANS in
+
+        1)
+        DOC=$HOME/patmenu2/vara-list/20mvaralist.txt
+        ;;
+
+        2)
+        DOC=$HOME/patmenu2/vara-list/30mvaralist.txt
+        ;;
+
+        3)
+        DOC=$HOME/patmenu2/vara-list/40mvaralist.txt
+        ;;
+
+        4)
+        DOC=$HOME/patmenu2/vara-list/80mvaralist.txt
+        ;;
+        5)
+        exit
+        ;;
+        *)
+        echo;echo "$ANS is not a valid input"
+        echo "Please choose a valid number"
+        sleep 5
+        GET_INPUT
+
+    esac
+    echo "Default search distance is ${max_distance}"
+    read -p "Search Distance? " search_distance
+    if [ ${search_distance} != ${max_distance} ]; then
+        max_distance=${search_distance}
+    fi
+    if [ ${search_distance} = 0 ];then
+        echo "Distance must be greater than 0"
+        sleep 3
+        GET_INPUT
+    fi
+}
+GET_INPUT
+meters=$(echo ${DOC} | awk -F "/" '{print $NF}' | sed 's/.txt//')
+output=$HOME/Desktop/winlink-${meters}.pos
+if [ -f $output ]; then
+    rm $output
+fi
+if [ ! -f ${DOC} ]; then
+    echo "Gateway list not found. Use Pat Menu to"
+    echo "download the gateway list and try again"
+    echo "Hint: Pat Menu->Find Winlink Gateways->Download Gateway List"
+    echo;read -n 1 -s -r -p "Press any key to continue"
+    exit
+fi
+stations=$(wc -l $DOC | awk '{print $1}')
+x=0
+while read -r line; do
+    clear;echo;echo
+    echo "searching for stations less than ${max_distance}km away"
+    echo "$stations to be processed"
+    echo "Processing stations....standby"
+    echo "$x stations processed"
+    ((x++))    
+    call=$(echo $line | awk '{print $1}')
+    grid=$(echo $line | awk '{print $2}' | sed 's/\[//;s/\]//')
+    freq=$(echo $line | awk '{print $6}')
+    if [ "$freq" = 'VARA' ] || [ "$freq" = '500' ] || [ "$freq" = '2750' ]; then
+        freq=$(echo $line | awk '{print $7}')
+    fi
+    distance=$(echo $line | awk '{print $3}')
+
+    #skip lines 1-3
+    if [ $x -le 4 ]; then
+        continue
+    fi
+
+    #skip blank lines
+    if [ -z "$call" ]; then
+        continue
+    fi
+
+    #skip if distance is greater than 3500km
+    if [ $distance -gt ${max_distance} ]; then
+        continue
+    fi
+    call=`printf "%-9s" $call`
+    LAT_LONG=$(locator $grid | grep Coord)
+    TIME="*192039h"
+    LONG_CK=$(echo $LAT_LONG | awk '{print $4}' | sed 's/-//')
+    if (($(echo "${LONG_CK} 99.99999" | awk '{print ($1 > $2)}'))); then
+        LONG=$(echo $LAT_LONG | awk '{print $4}' | sed 's/-//' | sed 's/\.//')
+    else
+        LONG=$(echo $LAT_LONG | awk '{print $4}' | sed 's/-/0/' | sed 's/\.//')
+    fi
+
+    LONG=${LONG}.00W
+    LAT=$(echo $LAT_LONG | awk '{print $8}' | sed 's/\.//' | cut -b1-4)
+    LAT=${LAT}.00N
+    echo ";${call}${TIME}${LAT}${table}${LONG}${symbol}${distance}km :: Center-${freq}" >> $output
+done < $DOC
+clear;echo;echo
+count=$(wc -l $output | awk '{print $1}')
+file_name=$(echo $output | awk -F "/" '{print $NF}')
+HEADER
+echo "SUCCESS!!"
+echo "$x stations processed"
+echo "$count met the search criteria of stations within ${max_distance}km"
+echo "POS file is ${file_name} and is ready to be imported into YAAC"
+echo;read -n 1 -s -r -p "Press any key to continue"
+
+
+
+
+
+
