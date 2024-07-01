@@ -16,7 +16,7 @@ rm $HOME/bin/posit-generator/install.sh
 ck=$(which locator)
 if [ -z ${ck} ]; then
     echo "locator required but not found. installing"
-    curl http://db.net/downloads/wwl+db-1.3.tgz
+    wget http://db.net/downloads/wwl+db-1.3.tgz
     tar -zxvf wwl+db-1.3.tgz
     rm wwl+db-1.3.tgz
     cd wwl+db-1.3
