@@ -26,7 +26,7 @@ if [ -z ${ck} ]; then
 fi
 
 ck=$(which jq)
-if [-z ${ck} ]; then
+if [ -z ${ck} ]; then
     echo "jq required but not found. installing"
     sudo apt install jq -y
 fi
