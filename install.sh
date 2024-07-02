@@ -25,6 +25,12 @@ if [ -z ${ck} ]; then
     rm -rf wwl+db-1.3
 fi
 
+ck=$(which jq)
+if [-z ${ck} ]; then
+    echo "jq required but not found. installing"
+    sudo apt install jq -y
+fi
+
 cat <<EOF >/run/user/$UID/pos-generator.desktop
 [Desktop Entry]
 Name=POSIT Generator
