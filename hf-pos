@@ -143,9 +143,8 @@ if [ -f $output ]; then
     rm $output
 fi
 if [ ! -f ${DOC} ]; then
-    echo "Gateway list not found. Use Pat Menu to"
+    echo "Gateway list not found. Use script to"
     echo "download the gateway list and try again"
-    echo "Hint: Pat Menu->Find Winlink Gateways->Download Gateway List"
     echo;read -n 1 -s -r -p "Press any key to continue"
     exit
 fi
