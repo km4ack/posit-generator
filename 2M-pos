@@ -6,7 +6,7 @@ symbol="\`"
 table="/"
 VARAEIGHTY=${APP_DIR}/gateways/80mvaralist.txt
 VARAFORTY=${APP_DIR}/gateways/40mvaralist.txt
-VARATWENTY=${APP_DIR}/gateways}/20mvaralist.txt
+VARATWENTY=${APP_DIR}/gateways/20mvaralist.txt
 VARATHIRTY=${APP_DIR}/gateways/30mvaralist.txt
 VARAFM=${APP_DIR}/gateways/varafm.txt
 PACKET=${APP_DIR}/gateways/packet.txt
@@ -206,7 +206,8 @@ while read -r line; do
     call=`printf "%-9s" $call`
     grid=$(echo $line | awk '{print $2}' | sed 's/\[//;s/]//')
     speed=$(echo $line | awk '{print $6}')
-    freq=$(echo $line | awk '{print $7}')
+    #freq=$(echo $line | awk '{print $7}')
+    freq=$(echo $line | awk -F "=" '{print $NF}')
     time=$(date -u +%H%M%S)
     LATLONG
     echo ";${call}*${time}h${new_lat}N${table}${new_long}W${symbol}${freq} ${speed}" >> ${out_file}
