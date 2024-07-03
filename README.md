@@ -16,7 +16,7 @@ Once the pos file is created, it can be imported in YAAC where it will be placed
 
 # Requirements
 
-You will need Pat Menu installed before creating Winlink POS files. Use Pat Menu to download the the gateways list. Hint: Pat Menu->Find Winlink Gateways->Download Gateway List
+Before creating gateway POS files, use this script to download the Winlink gateways.
 
 Before creating Repeater POS files, use this script to download the state repeater list.
 
