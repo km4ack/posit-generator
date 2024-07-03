@@ -4,6 +4,12 @@ APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 max_distance=2500
 symbol="\`"
 table="/"
+VARAEIGHTY=${APP_DIR}/gateways/80mvaralist.txt
+VARAFORTY=${APP_DIR}/gateways/40mvaralist.txt
+VARATWENTY=${APP_DIR}/gateways/20mvaralist.txt
+VARATHIRTY=${APP_DIR}/gateways/30mvaralist.txt
+VARAFM=${APP_DIR}/gateways/varafm.txt
+PACKET=${APP_DIR}/gateways/packet.txt
 version=$(grep version ${APP_DIR}/pos-generator | head -1 | awk -F "=" '{print $2}')
 #28JUNE2024 KM4ACK
 
@@ -16,33 +22,82 @@ HEADER(){
     echo
 }
 
+REMOVE() {
+    #remove old vara files before downloading new ones
+    if [ -f ${VARATHIRTY} ]; then
+	    rm ${VARATHIRTY}
+    fi
+
+    if [ -f ${VARAEIGHTY} ]; then
+        rm ${VARAEIGHTY}
+    fi
+
+    if [ -f ${VARAFORTY} ]; then
+        rm ${VARAFORTY}
+    fi
+
+    if [ -f ${VARATWENTY} ]; then
+        rm ${VARATWENTY}
+    fi
+
+    if	[ -f ${VARAFM} ]; then
+	    rm ${VARAFM}
+    fi
+
+    if	[ -f ${PACKET} ]; then
+	    rm ${PACKET}
+    fi
+}
+
+DOWNLOAD(){
+    mkdir -p ${APP_DIR}/gateways/
+    echo "Downloading VARA FM list"
+    pat rmslist -s --mode varafm --force-download >> ${VARAFM}
+    echo "Downloading Packet List"
+    pat rmslist -s --mode packet --force-download >> ${PACKET}
+    echo "Downloading VARA HF 80M list"
+    pat rmslist -s --band 80m --mode vara --force-download >> ${VARAEIGHTY}
+    echo "Downloading VARA HF 40M list"
+    pat rmslist -s --band 40m --mode vara --force-download >> ${VARAFORTY}
+    echo "Downloading VARA HF 30M list"
+    pat rmslist -s --band 30m --mode vara --force-download >> ${VARATHIRTY}
+    echo "Downloading VARA HF 20M list"
+    pat rmslist -s --band 20m --mode vara --force-download >> ${VARATWENTY}
+    GET_INPUT
+}
+
 GET_INPUT(){
     HEADER
-    echo "1) 20 Meters VARA HF"
-    echo "2) 30 Meters VARA HF"
-    echo "3) 40 Meters VARA HF"
-    echo "4) 80 Meters VARA HF"
-    echo "5) Exit"
+    echo "1) Create 20M VARA HF POS"
+    echo "2) Create 30M VARA HF POS"
+    echo "3) Create 40M VARA HF POS"
+    echo "4) Create 80M VARA HF POS"
+    echo "5) Download Gateway List"
+    echo "6) Exit"
     echo;read -p "Please choose a number " ANS
 
     case $ANS in
 
         1)
-        DOC=$HOME/patmenu2/vara-list/20mvaralist.txt
+        DOC=${APP_DIR}/gateways/20mvaralist.txt
         ;;
 
         2)
-        DOC=$HOME/patmenu2/vara-list/30mvaralist.txt
+        DOC=${APP_DIR}/gateways/30mvaralist.txt
         ;;
 
         3)
-        DOC=$HOME/patmenu2/vara-list/40mvaralist.txt
+        DOC=${APP_DIR}/gateways/40mvaralist.txt
         ;;
 
         4)
-        DOC=$HOME/patmenu2/vara-list/80mvaralist.txt
+        DOC=${APP_DIR}/gateways/80mvaralist.txt
         ;;
         5)
+        REMOVE
+        DOWNLOAD
+        ;;
+        6)
         exit
         ;;
         *)
