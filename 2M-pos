@@ -153,9 +153,8 @@ LATLONG(){
 
 #verify we have a file to work with
 if [ ! -f ${input_file} ]; then
-    echo "master packet list not found"
-    echo "use pat menu to download the packet list"
-    echo "Hint: Pat Menu->Find Winlink Gateways->Download Gateway List"
+    echo "Master packet list not found"
+    echo "Use script to download the gateway list"
     echo;read -n 1 -s -r -p "Press any key to exit"
     exit 1
 fi
