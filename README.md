@@ -35,3 +35,5 @@ git clone https://github.com/km4ack/posit-generator.git $HOME/posit-generator &&
 Please note that the repeaterbook.com API will be rate limited if you attempt to download too much data too quickly. If this happens you will receieve a text file that
 contains a error instead of repeater data. This will cause the script to produce an error. Typically waiting 20 minutes or so will clear the rate limit. 
 More details can be found on the [API page](https://www.repeaterbook.com/wiki/doku.php?id=api)
+
+To figure out if you have been rate limited, go to ~/bin/posit-generator/repeater_list and right click on the state list. If you have repeater data, you have not been rate limited. If you see something about exceeding the API limit, you have been rate limited by repeaterbook.com. I have zero control over the API limit. That is between you and repeaterbook.com
