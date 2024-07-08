@@ -29,3 +29,9 @@ Install is a breeze. Just paste the following command into your terminal.
 ```
 git clone https://github.com/km4ack/posit-generator.git $HOME/posit-generator && bash $HOME/posit-generator/install.sh
 ```
+
+# Repeater API
+
+Please note that the repeaterbook.com API will be rate limited if you attempt to download too much data too quickly. If this happens you will receieve a text file that
+contains a error instead of repeater data. This will cause the script to produce an error. Typically waiting 20 minutes or so will clear the rate limit. 
+More details can be found on the [APR page](https://www.repeaterbook.com/wiki/doku.php?id=api)
